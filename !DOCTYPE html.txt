@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Archive /</title>
+    <style>
+        * { margin: 0; padding: 0; outline: 0; box-sizing: border-box; }
+        body {
+            padding: 40px 60px;
+            font: 14px "Helvetica Neue", "Lucida Grande", "Arial", sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Header & Search */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+        }
+        h1 { font-size: 32px; color: #222; font-weight: bold; letter-spacing: -1px; }
+        h1 em { font-weight: normal; color: #777; font-size: 24px; font-style: normal; }
+        
+        #search {
+            width: 200px;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        #search:focus { width: 250px; border-color: #888; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+
+        /* Category Filter */
+        .filter-nav {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+        }
+        .filter-btn {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 6px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #555;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover { background: #eee; }
+        .filter-btn.active { background: #333; color: #fff; border-color: #333; }
+
+        /* File Grid */
+        ul#files {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            list-style: none;
+        }
+        ul#files li {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        ul#files li:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .thumb {
+            width: 100%;
+            height: 150px;
+            background-color: #eaeaea;
+            background-size: cover;
+            background-position: center;
+            border-bottom: 1px solid #eee;
+        }
+        .info { padding: 12px; }
+        .info .title { font-weight: bold; font-size: 14px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .info .category { font-size: 11px; color: #888; display: inline-block; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; }
+        .info .date { font-size: 11px; color: #aaa; float: right; margin-top: 2px; }
+
+        /* Highlight state for search */
+        ul#files li.hidden { display: none; }
+        ul#files li.highlight { border: 2px solid #ffca28; box-shadow: 0 0 10px rgba(255,202,40,0.5); }
+
+        /* Modal (Popup) */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: #fff;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+            animation: modalFadeIn 0.3s ease;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px; right: 20px;
+            font-size: 24px;
+            color: #333;
+            cursor: pointer;
+            z-index: 10;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            width: 30px; height: 30px;
+            display: flex; justify-content: center; align-items: center;
+            border: none;
+        }
+        .modal-header { padding: 20px 30px; border-bottom: 1px solid #eee; }
+        .modal-title { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+        .modal-meta { font-size: 13px; color: #777; }
+        .modal-body { padding: 30px; min-height: 200px; font-size: 15px; line-height: 1.6; }
+        .modal-img-placeholder { width: 100%; height: 300px; background: #eee; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; color: #aaa; font-style: italic; }
+
+        @media (max-width: 768px) {
+            body { padding: 20px; }
+            .header-container { flex-direction: column; align-items: flex-start; gap: 15px; }
+            #search { width: 100%; }
+            ul#files { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+            .thumb { height: 120px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <h1>Directory <em>/ Archive</em></h1>
+        <input id="search" type="text" placeholder="검색어 입력..." autocomplete="off" />
+    </div>
+
+    <!-- Category Filters -->
+    <div class="filter-nav" id="filters">
+        <button class="filter-btn active" data-filter="all">전체보기</button>
+        <button class="filter-btn" data-filter="Series">Series</button>
+        <button class="filter-btn" data-filter="Travel">Travel</button>
+        <button class="filter-btn" data-filter="Design">Design</button>
+        <button class="filter-btn" data-filter="Movie">Movie</button>
+        <button class="filter-btn" data-filter="Music">Music</button>
+        <button class="filter-btn" data-filter="Photo">Photo</button>
+    </div>
+
+    <!-- File Grid -->
+    <ul id="files">
+        <!-- List items will be generated by JavaScript -->
+    </ul>
+
+    <!-- Modal Layout -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-header">
+                <div class="modal-title" id="m-title">Title</div>
+                <div class="modal-meta">
+                    <span id="m-category" style="font-weight:bold;">Category</span> | 
+                    <span id="m-date">Date</span>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-img-placeholder" id="m-img">Image Content Area</div>
+                <p id="m-desc">Description goes here...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. 샘플 데이터 (20개)
+        const archiveData = [
+            { id: 1, title: "Succession 시즌 4 캐릭터 분석", category: "Series", date: "2026-02-15", desc: "주요 인물들의 권력 다툼과 심리 변화 분석 정리.", color: "#3a4a5a" },
+            { id: 2, title: "도쿄 갤러리 투어 루트 (오모테산도)", category: "Travel", date: "2026-05-15", desc: "5월 15일부터 19일까지 예정된 도쿄 아트 투어 동선 및 갤러리 리스트.", color: "#e88080" },
+            { id: 3, title: "Dolpali 브랜드 스티커 시안", category: "Design", date: "2026-02-28", desc: "돌 테마 굿즈 'Dolpali'의 첫 번째 스티커 팩 디자인 시안 (Figma/Illustrator).", color: "#8a9a8a" },
+            { id: 4, title: "인더스트리얼 가구 레퍼런스", category: "Design", date: "2026-04-10", desc: "철제 프레임과 노출 콘크리트를 활용한 VMD 공간 디스플레이 참고 자료.", color: "#666" },
+            { id: 5, title: "올해의 하이퍼팝 플레이리스트", category: "Music", date: "2026-04-20", desc: "PC Music 스타일과 실험적인 사운드를 모아둔 개인 플레이리스트 아카이브.", color: "#d9534f" },
+            { id: 6, title: "The Pitt 서사 구조 요약", category: "Series", date: "2026-02-18", desc: "존 카터 출연 의학 드라마의 에피소드별 서사 텐션 기록.", color: "#5bc0de" },
+            { id: 7, title: "아방가르드 앨범 커버 모음", category: "Music", date: "2026-04-22", desc: "영감을 주는 독특한 타이포그래피와 레이아웃의 앨범 커버 스크랩.", color: "#292b2c" },
+            { id: 8, title: "파리 뒷골목 스냅사진", category: "Photo", date: "2025-10-05", desc: "지난 가을 필름 카메라로 담은 파리 마레 지구의 일상 풍경.", color: "#f0ad4e" },
+            { id: 9, title: "미니멀리즘 거실 렌더링", category: "Design", date: "2026-03-12", desc: "SketchUp을 활용해 모델링한 미니멀 스타일 인테리어 VMD 포트폴리오 컷.", color: "#5cb85c" },
+            { id: 10, title: "Dune: Part Two 감상평", category: "Movie", date: "2026-03-01", desc: "스케일과 사운드 디자인에 압도되었던 듄 파트 2 개인 리뷰.", color: "#cfb074" },
+            { id: 11, title: "유럽 대학원 VMD 포트폴리오 초안", category: "Design", date: "2026-01-20", desc: "이탈리아, 영국 디자인 스쿨 지원을 위한 작업물 1차 큐레이션.", color: "#0275d8" },
+            { id: 12, title: "도쿄 미슐랭 예약 리스트", category: "Travel", date: "2026-05-01", desc: "도쿄 방문 시 친구와 갈 식당 및 카페 예약 링크 모음.", color: "#e88080" },
+            { id: 13, title: "Past Lives (Past Lives)", category: "Movie", date: "2025-12-10", desc: "인연(In-Yun)이라는 개념을 통해 본 우연과 필연에 대한 영화적 고찰.", color: "#6f42c1" },
+            { id: 14, title: "Dolpali 패키지 지기구조", category: "Design", date: "2026-03-05", desc: "돌 형태를 본뜬 독특한 패키지 박스 전개도 도면.", color: "#8a9a8a" },
+            { id: 15, title: "IELTS 스피킹 스크립트 연습", category: "Series", date: "2026-02-25", desc: "Target 7.0 달성을 위한 파트별 모범 답안 및 아이디어 정리 노트.", color: "#5bc0de" },
+            { id: 16, title: "텍스처 맵핑 리소스 라이브러리", category: "Design", date: "2026-04-05", desc: "3D 렌더링에 자주 쓰는 콘크리트, 금속, 나무 고해상도 텍스처 폴더.", color: "#666" },
+            { id: 17, title: "제주도 겨울 바다", category: "Photo", date: "2026-01-10", desc: "흐린 날 다녀온 제주 서쪽 해변의 거친 파도 흑백 사진.", color: "#f0ad4e" },
+            { id: 18, title: "Experimental Ambient Set", category: "Music", date: "2026-03-20", desc: "작업할 때 듣기 좋은 앰비언트 노이즈 트랙 믹스.", color: "#292b2c" },
+            { id: 19, title: "에드워드 호퍼 헌정 샷", category: "Photo", date: "2025-11-20", desc: "호퍼의 색감을 모티브로 도심 속 고립감을 연출한 스튜디오 촬영본.", color: "#f0ad4e" },
+            { id: 20, title: "2026년 상반기 전시회 티켓 모음", category: "Travel", date: "2026-04-28", desc: "화랑미술제 준비 기간 중 방문했던 타 갤러리 및 아트페어 티켓 영수증 기록.", color: "#e88080" }
+        ];
+
+        const filesContainer = document.getElementById('files');
+        let currentFilter = 'all';
+
+        // 2. 리스트 렌더링 함수
+        function renderFiles() {
+            filesContainer.innerHTML = '';
+            
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+
+            archiveData.forEach(item => {
+                // 카테고리 필터링
+                if (currentFilter !== 'all' && item.category !== currentFilter) return;
+                
+                // 검색어 필터링 (제목 검색)
+                const titleLower = item.title.toLowerCase();
+                const isMatch = searchTerm.length > 0 && titleLower.includes(searchTerm);
+                const isHidden = searchTerm.length > 0 && !isMatch;
+
+                if (isHidden) return; // 검색에 맞지 않으면 숨김
+
+                const li = document.createElement('li');
+                // 검색어가 있고 매칭되면 강조 표시 (요청하신 highlight 유지)
+                if (isMatch) li.classList.add('highlight');
+
+                li.innerHTML = `
+                    <div class="thumb" style="background-color: ${item.color};"></div>
+                    <div class="info">
+                        <div class="title">${item.title}</div>
+                        <span class="category">${item.category}</span>
+                        <span class="date">${item.date}</span>
+                    </div>
+                `;
+                
+                // 클릭 시 모달 열기 이벤트 바인딩
+                li.onclick = () => openModal(item);
+                filesContainer.appendChild(li);
+            });
+        }
+
+        // 3. 필터 버튼 이벤트
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // 버튼 활성화 스타일 변경
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                // 필터 값 변경 후 다시 렌더링
+                currentFilter = e.target.getAttribute('data-filter');
+                renderFiles();
+            });
+        });
+
+        // 4. 검색창 이벤트
+        document.getElementById('search').addEventListener('input', renderFiles);
+
+        // 5. 모달 제어 함수
+        function openModal(item) {
+            document.getElementById('m-title').innerText = item.title;
+            document.getElementById('m-category').innerText = item.category;
+            document.getElementById('m-date').innerText = item.date;
+            document.getElementById('m-desc').innerText = item.desc;
+            document.getElementById('m-img').style.backgroundColor = item.color;
+            document.getElementById('m-img').innerText = item.title + " (Image Area)";
+            
+            document.getElementById('modal').style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // 배경 스크롤 방지
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        // 모달 외부 영역 클릭 시 닫기
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') closeModal();
+        });
+
+        // 초기 렌더링 실행
+        renderFiles();
+    </script>
+</body>
+</html>
